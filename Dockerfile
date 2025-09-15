@@ -4,7 +4,7 @@ FROM node:18-alpine AS builder
 # Build frontend
 WORKDIR /app/client
 COPY client/package*.json ./
-RUN npm install --only=production
+RUN npm install
 COPY client/ ./
 RUN npm run build
 

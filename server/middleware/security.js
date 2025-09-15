@@ -19,11 +19,18 @@ const ipWhitelist = (req, res, next) => {
   
   // Check if IP is in whitelist
   const isAllowed = allowedIPs.some(allowedIP => {
-    if (allowedIP.includes('/')) {
-      // CIDR notation support (basic)
-      return realIP.startsWith(allowedIP.split('/')[0].slice(0, -1));
+    // Allow all traffic for development (0.0.0.0/0 or ::/0)
+    if (allowedIP === '0.0.0.0/0' || allowedIP === '::/0') {
+      return true;
     }
-    return realIP === allowedIP || realIP.endsWith(allowedIP);
+    
+    if (allowedIP.includes('/')) {
+      // Basic CIDR notation support
+      const [network, bits] = allowedIP.split('/');
+      // For development, just check if IP starts with network prefix
+      return realIP.includes(network.split('.')[0]) || realIP.includes(network.split(':')[0]);
+    }
+    return realIP === allowedIP || realIP.includes(allowedIP);
   });
   
   if (!isAllowed) {

@@ -36,7 +36,7 @@ if docker-compose ps | grep -q "Up"; then
     echo "✅ Services started successfully!"
     echo ""
     echo "🌐 Your Home Hub is available at:"
-    echo "   http://localhost:5000"
+    echo "   http://localhost:3001"
     echo ""
     echo "🔑 Login credentials:"
     echo "   Username: admin"

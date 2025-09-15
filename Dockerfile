@@ -4,7 +4,7 @@ FROM node:18-alpine AS builder
 # Build frontend
 WORKDIR /app/client
 COPY client/package*.json ./
-RUN npm ci --only=production
+RUN npm install --only=production
 COPY client/ ./
 RUN npm run build
 
@@ -15,7 +15,7 @@ WORKDIR /app
 
 # Install server dependencies
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Copy server code
 COPY server/ ./server/

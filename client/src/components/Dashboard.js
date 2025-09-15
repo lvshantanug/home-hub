@@ -17,7 +17,7 @@ import {
   AttachMoney as MoneyIcon,
   CalendarToday as CalendarIcon,
   Warning as WarningIcon
-} from '@mui/material';
+} from '@mui/icons-material';
 import axios from 'axios';
 
 const Dashboard = () => {

@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-hub-app
+  namespace: home-hub
+  labels:
+    app: home-hub
+    environment: development
+spec:
+  replicas: 1  # Single replica for cost savings
+  selector:
+    matchLabels:
+      app: home-hub
+  template:
+    metadata:
+      labels:
+        app: home-hub
+        environment: development
+    spec:
+      containers:
+      - name: home-hub
+        image: YOUR_ECR_REPO/home-hub-dev:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: home-hub-config
+              key: NODE_ENV
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: home-hub-config
+              key: PORT
+        - name: ALLOWED_IPS
+          valueFrom:
+            configMapKeyRef:
+              name: home-hub-config
+              key: ALLOWED_IPS
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: home-hub-secrets
+              key: JWT_SECRET
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: home-hub-secrets
+              key: DATABASE_URL
+        resources:
+          requests:
+            memory: "128Mi"  # Minimal resources
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /api/auth/me
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 30  # Less frequent checks
+        readinessProbe:
+          httpGet:
+            path: /api/auth/me
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10

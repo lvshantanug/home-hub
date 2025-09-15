@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: homehub_dev
+      POSTGRES_USER: homehub_user
+      POSTGRES_PASSWORD: dev_password_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homehub_user -d homehub_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  home-hub:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DATABASE_URL: postgresql://homehub_user:dev_password_123@postgres:5432/homehub_dev
+      JWT_SECRET: dev-jwt-secret-change-in-production
+      ALLOWED_IPS: "127.0.0.1,::1,172.0.0.0/8,192.168.0.0/16,10.0.0.0/8"
+      FRONTEND_URL: http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./server:/app/server
+      - ./client/build:/app/client/build
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

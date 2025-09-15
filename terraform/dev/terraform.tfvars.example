@@ -1,0 +1,22 @@
+# Development Environment Configuration
+# Copy this file to terraform.tfvars and update with your values
+
+aws_region = "us-east-1"  # Cheapest region
+project_name = "home-hub"
+
+# Database configuration (free tier eligible)
+db_password = "your-dev-password-here"
+db_name = "homehub_dev"
+db_username = "homehub_dev_user"
+
+# Your home IP address for security (get from whatismyip.com)
+home_ip = "YOUR_HOME_IP_HERE/32"
+
+# Tags for cost tracking
+tags = {
+  Project     = "home-hub"
+  Environment = "development"
+  Owner       = "your-name"
+  ManagedBy   = "terraform"
+  CostCenter  = "development"
+}

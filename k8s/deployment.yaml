@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-hub-app
+  namespace: home-hub
+  labels:
+    app: home-hub
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: home-hub
+  template:
+    metadata:
+      labels:
+        app: home-hub
+    spec:
+      containers:
+      - name: home-hub
+        image: YOUR_ECR_REPO/home-hub:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: home-hub-config
+              key: NODE_ENV
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: home-hub-config
+              key: PORT
+        - name: FRONTEND_URL
+          valueFrom:
+            configMapKeyRef:
+              name: home-hub-config
+              key: FRONTEND_URL
+        - name: ALLOWED_IPS
+          valueFrom:
+            configMapKeyRef:
+              name: home-hub-config
+              key: ALLOWED_IPS
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: home-hub-secrets
+              key: JWT_SECRET
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: home-hub-secrets
+              key: DATABASE_URL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/auth/me
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/auth/me
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      imagePullSecrets:
+      - name: ecr-registry-secret

@@ -1,0 +1,88 @@
+# Rename this file to deploy-aws.yml when ready to deploy to AWS
+# Make sure to set up GitHub secrets first:
+# - AWS_ACCESS_KEY_ID
+# - AWS_SECRET_ACCESS_KEY
+
+name: Deploy to AWS EKS
+
+on:
+  workflow_dispatch:  # Manual trigger only
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+      - 'TESTING.md'
+      - 'DEPLOYMENT.md'
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: home-hub-dev-cluster
+  ECR_REPOSITORY: home-hub-dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: secrets.AWS_ACCESS_KEY_ID != ''
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+
+    - name: Update kube config
+      run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+
+    - name: Deploy to EKS
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Update deployment image
+        sed -i "s|YOUR_ECR_REPO/home-hub-dev:latest|$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" k8s/dev/deployment.yaml
+        
+        # Apply Kubernetes manifests
+        kubectl apply -f k8s/dev/namespace.yaml
+        kubectl apply -f k8s/dev/configmap.yaml
+        kubectl create secret generic home-hub-secrets \
+          --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+          --from-literal=DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+          --namespace=home-hub \
+          --dry-run=client -o yaml | kubectl apply -f -
+        kubectl apply -f k8s/dev/deployment.yaml
+        kubectl apply -f k8s/dev/service.yaml
+        
+        # Wait for deployment to be ready
+        kubectl rollout status deployment/home-hub-app -n home-hub --timeout=300s
+
+    - name: Verify deployment
+      run: |
+        kubectl get services -n home-hub
+        kubectl get pods -n home-hub
+        echo "Deployment completed successfully!"

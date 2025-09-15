@@ -16,10 +16,10 @@ const initDatabase = async () => {
     // Test connection
     const client = await pool.connect();
     console.log('Connected to PostgreSQL database');
-    
+
     // Create tables
     await createTables(client);
-    
+
     client.release();
     console.log('Database initialized successfully');
   } catch (error) {
